@@ -1,6 +1,8 @@
 import asyncio
 import logging
+
 from abc import ABCMeta
+from litellm import token_counter
 from typing import AsyncGenerator, Generator, Optional
 
 from core.base.abstractions import (
@@ -61,13 +63,36 @@ class R2RAgent(Agent, metaclass=CombinedMeta):
             for message in messages:
                 await self.conversation.add_message(message)
 
+        print(f"Messages: {messages}")
+
+        token_usage = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
+
         while not self._completed:
             messages_list = await self.conversation.get_messages()
             generation_config = self.get_generation_config(messages_list[-1])
+
+            prompt_tokens = token_counter(
+                model=generation_config.model, messages=messages_list
+            )
+            token_usage["prompt_tokens"] += prompt_tokens
+
             response = await self.llm_provider.aget_completion(
                 messages_list,
                 generation_config,
             )
+
+            # assistant_message = response.choices[0].message
+            # completion_tokens = token_counter(model=generation_config.model, messages=[assistant_message])
+            # token_usage['completion_tokens'] += completion_tokens
+
+            # token_usage['total_tokens'] = token_usage['prompt_tokens'] + token_usage['completion_tokens']
+
+            token_usage["total_tokens"] = token_usage["prompt_tokens"]
+
             await self.process_llm_response(response, *args, **kwargs)
 
         # Get the output messages
@@ -76,6 +101,7 @@ class R2RAgent(Agent, metaclass=CombinedMeta):
 
         output_messages = []
         for message_2 in all_messages:
+            print(f"Type of message_2: {type(message_2)}")
             if (
                 message_2.get("content")
                 and message_2.get("content") != messages[-1].content
@@ -85,7 +111,7 @@ class R2RAgent(Agent, metaclass=CombinedMeta):
                 break
         output_messages.reverse()
 
-        return output_messages
+        return {"messages": output_messages, "token_usage": token_usage}
 
     async def process_llm_response(
         self, response: LLMChatCompletion, *args, **kwargs
@@ -135,14 +161,30 @@ class R2RStreamingAgent(R2RAgent):
             generation_config = self.get_generation_config(
                 messages_list[-1], stream=True
             )
+            print(f"Messages: {messages_list}")
+            tokens = token_counter(
+                model=generation_config.model,
+                messages=messages_list,
+            )
+            print(f"Tokens: {tokens}")
             stream = self.llm_provider.aget_completion_stream(
                 messages_list,
                 generation_config,
             )
+
+            chunk_content = ""
             async for proc_chunk in self.process_llm_response(
                 stream, *args, **kwargs
             ):
+                chunk_content += proc_chunk
                 yield proc_chunk
+
+            print(f"Chunk content: {chunk_content}")
+            tokens = token_counter(
+                model=generation_config.model,
+                messages=[{"message": chunk_content}],
+            )
+            print(f"Tokens: {tokens}")
 
     def run(
         self, system_instruction, messages, *args, **kwargs

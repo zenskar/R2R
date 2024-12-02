@@ -5,6 +5,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
+from litellm import token_counter
 
 from core import R2RStreamingRAGAgent
 from core.base import (
@@ -331,11 +332,25 @@ class RetrievalService(Service):
 
                 current_message = messages[-1]  # type: ignore
 
+                print(f"The current message is: {current_message}")
+
+                tokens = token_counter(
+                    model=rag_generation_config.model,
+                    messages=[
+                        {
+                            "role": current_message.role,
+                            "content": current_message.content,
+                        }
+                    ],
+                )
+                print(f"Tokens: {tokens}")
+
                 # Save the new message to the conversation
                 message_id = await self.logging_connection.add_message(
                     conversation_id,  # type: ignore
                     current_message,  # type: ignore
                     parent_id=str(ids[-2]) if (ids and len(ids) > 1) else None,  # type: ignore
+                    metadata={"usage": tokens},
                 )
 
                 if rag_generation_config.stream:
@@ -346,6 +361,10 @@ class RetrievalService(Service):
                         run_id=run_id,
                         key="rag_agent_generation_latency",
                         value=latency,
+                    )
+
+                    print(
+                        f"Messages: {messages} \n\nSystem Instruction: {task_prompt_override} \n\nVector Search Settings: {vector_search_settings} \n\nKG Search Settings: {kg_search_settings} \n\nRAG Generation Config: {rag_generation_config} \n\nInclude Title If Available: {include_title_if_available}"
                     )
 
                     async def stream_response():
@@ -369,6 +388,10 @@ class RetrievalService(Service):
                                 yield chunk
 
                     return stream_response()
+
+                print(
+                    f"Messages: {messages} \n\nSystem Instruction: {task_prompt_override} \n\nVector Search Settings: {vector_search_settings} \n\nKG Search Settings: {kg_search_settings} \n\nRAG Generation Config: {rag_generation_config} \n\nInclude Title If Available: {include_title_if_available}"
+                )
 
                 results = await self.agents.rag_agent.arun(
                     messages=messages,
