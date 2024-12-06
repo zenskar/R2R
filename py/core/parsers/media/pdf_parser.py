@@ -150,7 +150,7 @@ class VLMPDFParser(AsyncParser[str | bytes]):
         """
         if not self.vision_prompt_text:
             self.vision_prompt_text = await self.database_provider.get_cached_prompt(  # type: ignore
-                prompt_name=self.config.vision_pdf_prompt_name
+                prompt_name=self.config.vision_pdf_prompt
             )
 
         temp_dir = None

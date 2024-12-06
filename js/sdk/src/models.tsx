@@ -22,11 +22,11 @@ export enum KGRunType {
   RUN = "run",
 }
 
-export interface KGEntityDeduplicationSettings {
-  kgEntityDeduplicationType?: KGEntityDeduplicationType;
+export interface GraphEntityDeduplicationSettings {
+  GraphEntityDeduplicationType?: GraphEntityDeduplicationType;
 }
 
-export enum KGEntityDeduplicationType {
+export enum GraphEntityDeduplicationType {
   BY_NAME = "by_name",
   BY_DESCRIPTION = "by_description",
 }

@@ -34,8 +34,8 @@ __all__ = [
     "KGExtraction",
     "Relationship",
     "Community",
-    "KGCreationSettings",
-    "KGEnrichmentSettings",
+    "GraphCreationSettings",
+    "GraphEnrichmentSettings",
     "KGRunType",
     # LLM abstractions
     "GenerationConfig",

@@ -15,10 +15,7 @@ from core.base.abstractions import (
     Community,
     Entity,
     Graph,
-    KGCreationSettings,
-    KGEnrichmentSettings,
     KGEnrichmentStatus,
-    KGEntityDeduplicationSettings,
     KGExtractionStatus,
     R2RException,
     Relationship,
@@ -36,6 +33,7 @@ from core.base.utils import (
     _get_str_estimation_output,
     llm_cost_per_million_tokens,
 )
+from shared.abstractions.graph import GraphCreationSettings, GraphEnrichmentSettings, GraphEntityDeduplicationSettings
 
 from .base import PostgresConnectionManager
 from .collection import PostgresCollectionHandler
@@ -1452,7 +1450,7 @@ class PostgresGraphHandler(GraphHandler):
 
     async def get_creation_estimate(
         self,
-        graph_creation_settings: KGCreationSettings,
+        graph_creation_settings: GraphCreationSettings,
         document_id: Optional[UUID] = None,
         collection_id: Optional[UUID] = None,
     ):
@@ -1481,7 +1479,7 @@ class PostgresGraphHandler(GraphHandler):
 
         total_chunks = (
             sum(doc["chunk_count"] for doc in chunk_counts)
-            // graph_creation_settings.chunk_merge_count
+            // graph_creation_settings.chunks_per_extraction
         )
         estimated_entities = (total_chunks * 10, total_chunks * 20)
         estimated_relationships = (
@@ -1533,7 +1531,7 @@ class PostgresGraphHandler(GraphHandler):
         self,
         collection_id: UUID | None = None,
         graph_id: UUID | None = None,
-        graph_enrichment_settings: KGEnrichmentSettings = KGEnrichmentSettings(),
+        graph_enrichment_settings: GraphEnrichmentSettings = GraphEnrichmentSettings(),
     ):
         """Get the estimated cost and time for enriching a KG."""
         if collection_id is not None:
@@ -1620,7 +1618,7 @@ class PostgresGraphHandler(GraphHandler):
     async def get_deduplication_estimate(
         self,
         collection_id: UUID,
-        kg_deduplication_settings: KGEntityDeduplicationSettings,
+        kg_deduplication_settings: GraphEntityDeduplicationSettings,
     ):
         """Get the estimated cost and time for deduplicating entities in a KG."""
         try:

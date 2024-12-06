@@ -21,7 +21,7 @@ from core.providers.logger.r2r_logger import SqlitePersistentLoggingProvider
 logger = logging.getLogger()
 
 
-class KGEntityDescriptionPipe(AsyncPipe):
+class GraphEntityDescriptionPipe(AsyncPipe):
     """
     The pipe takes input a list of nodes and extracts description from them.
     """
@@ -98,7 +98,7 @@ class KGEntityDescriptionPipe(AsyncPipe):
                     (
                         await self.llm_provider.aget_completion(
                             messages=await self.database_provider.prompt_handler.get_message_payload(
-                                task_prompt_name=self.database_provider.config.graph_creation_settings.graph_entity_description_prompt,
+                                task_prompt=self.database_provider.config.graph_creation_settings.graph_entity_description_prompt,
                                 task_inputs={
                                     "entity_info": truncate_info(
                                         entity_info,
@@ -143,7 +143,7 @@ class KGEntityDescriptionPipe(AsyncPipe):
         logger = input.message["logger"]
 
         logger.info(
-            f"KGEntityDescriptionPipe: Getting entity map for document {document_id}",
+            f"GraphEntityDescriptionPipe: Getting entity map for document {document_id}",
         )
 
         entity_map = await self.database_provider.graph_handler.get_entity_map(
@@ -152,7 +152,7 @@ class KGEntityDescriptionPipe(AsyncPipe):
         total_entities = len(entity_map)
 
         logger.info(
-            f"KGEntityDescriptionPipe: Got entity map for document {document_id}, total entities: {total_entities}, time from start: {time.time() - start_time:.2f} seconds",
+            f"GraphEntityDescriptionPipe: Got entity map for document {document_id}, total entities: {total_entities}, time from start: {time.time() - start_time:.2f} seconds",
         )
 
         workflows = []
@@ -174,11 +174,11 @@ class KGEntityDescriptionPipe(AsyncPipe):
         for result in asyncio.as_completed(workflows):
             if completed_entities % 100 == 0:
                 logger.info(
-                    f"KGEntityDescriptionPipe: Completed {completed_entities+1} of {total_entities} entities for document {document_id}",
+                    f"GraphEntityDescriptionPipe: Completed {completed_entities+1} of {total_entities} entities for document {document_id}",
                 )
             yield await result
             completed_entities += 1
 
         logger.info(
-            f"KGEntityDescriptionPipe: Processed {total_entities} entities for document {document_id}, time from start: {time.time() - start_time:.2f} seconds",
+            f"GraphEntityDescriptionPipe: Processed {total_entities} entities for document {document_id}, time from start: {time.time() - start_time:.2f} seconds",
         )

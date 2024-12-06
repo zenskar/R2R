@@ -1,3 +1,4 @@
+from shared.abstractions.graph import GraphBuildSettings, GraphCommunitySettings, GraphCreationSettings, GraphEnrichmentSettings, GraphEntityDeduplicationSettings, GraphEntityDeduplicationType, GraphEntitySettings, GraphRelationshipSettings
 from shared.abstractions.base import AsyncSyncMeta, R2RSerializable, syncable
 from shared.abstractions.document import (
     Document,
@@ -30,15 +31,7 @@ from shared.abstractions.ingestion import (
     ChunkEnrichmentSettings,
     ChunkEnrichmentStrategy,
 )
-from shared.abstractions.kg import (
-    GraphBuildSettings,
-    GraphCommunitySettings,
-    GraphEntitySettings,
-    GraphRelationshipSettings,
-    KGCreationSettings,
-    KGEnrichmentSettings,
-    KGEntityDeduplicationSettings,
-    KGEntityDeduplicationType,
+from shared.abstractions.graph import (
     KGRunType,
 )
 from shared.abstractions.llm import (
@@ -137,14 +130,14 @@ __all__ = [
     "SearchMode",
     "HybridSearchSettings",
     # KG abstractions
-    "KGCreationSettings",
-    "KGEnrichmentSettings",
-    "KGEntityDeduplicationSettings",
+    "GraphCreationSettings",
+    "GraphEnrichmentSettings",
+    "GraphEntityDeduplicationSettings",
     "GraphBuildSettings",
     "GraphEntitySettings",
     "GraphRelationshipSettings",
     "GraphCommunitySettings",
-    "KGEntityDeduplicationType",
+    "GraphEntityDeduplicationType",
     "KGRunType",
     # User abstractions
     "Token",

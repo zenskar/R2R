@@ -9,6 +9,7 @@ from uuid import UUID
 
 from fastapi import Body, Depends, File, Form, Path, Query, UploadFile
 from fastapi.responses import StreamingResponse
+from shared.abstractions.graph import GraphCreationSettings
 from pydantic import Json
 
 from core.base import (
@@ -21,7 +22,7 @@ from core.base import (
     generate_document_id,
     generate_id,
 )
-from core.base.abstractions import KGCreationSettings, KGRunType
+from shared.abstractions.graph import KGRunType
 from core.base.api.models import (
     GenericBooleanResponse,
     WrappedBooleanResponse,
@@ -1205,7 +1206,7 @@ class DocumentsRouter(BaseRouterV3):
                 default=KGRunType.RUN,
                 description="Whether to return an estimate of the creation cost or to actually extract the document.",
             ),
-            settings: Optional[KGCreationSettings] = Body(
+            settings: Optional[GraphCreationSettings] = Body(
                 default=None,
                 description="Settings for the entities and relationships extraction process.",
             ),
@@ -1278,7 +1279,7 @@ class DocumentsRouter(BaseRouterV3):
                 from core.main.orchestration import simple_kg_factory
 
                 logger.info("Running extract-triples without orchestration.")
-                simple_kg = simple_kg_factory(self.services["kg"])
+                simple_kg = simple_kg_factory(self.services["graph"])
                 await simple_kg["extract-triples"](workflow_input)
                 return {  # type: ignore
                     "message": "Graph created successfully.",

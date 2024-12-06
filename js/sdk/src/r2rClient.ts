@@ -28,7 +28,7 @@ import {
   Message,
   RefreshTokenResponse,
   KGRunType,
-  KGEntityDeduplicationSettings,
+  GraphEntityDeduplicationSettings,
   RawChunk,
 } from "./models";
 
@@ -1809,7 +1809,7 @@ export class r2rClient extends BaseClient {
     collections_id?: string,
     run_type?: KGRunType,
     deduplication_settings?:
-      | KGEntityDeduplicationSettings
+      | GraphEntityDeduplicationSettings
       | Record<string, any>,
   ): Promise<any> {
     this._ensureAuthenticated();

@@ -214,8 +214,6 @@ export interface HybridSearchSettings {
 
 export interface GraphSearchSettings {
   generation_config?: GenerationConfig;
-  graphrag_map_system?: string;
-  graphrag_reduce_system?: string;
   max_community_description_length?: number;
   max_llm_queries_for_global_search?: number;
   limits?: Record<string, any>;

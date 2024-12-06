@@ -112,9 +112,9 @@ async def test_message_payload_creation(prompt_handler, sample_prompt):
     await prompt_handler.add_prompt(**sample_prompt)
 
     payload = await prompt_handler.get_message_payload(
-        system_prompt_name=sample_prompt["name"],
+        system_prompt=sample_prompt["name"],
         system_inputs={"input_var": "system context"},
-        task_prompt_name=sample_prompt["name"],
+        task_prompt=sample_prompt["name"],
         task_inputs={"input_var": "task context"},
     )
 

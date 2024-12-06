@@ -3,15 +3,15 @@ from .abstractions.search_pipe import SearchPipe
 from .ingestion.embedding_pipe import EmbeddingPipe
 from .ingestion.parsing_pipe import ParsingPipe
 from .ingestion.vector_storage_pipe import VectorStoragePipe
-from .kg.clustering import KGClusteringPipe
-from .kg.community_summary import KGCommunitySummaryPipe
-from .kg.deduplication import KGEntityDeduplicationPipe
-from .kg.deduplication_summary import KGEntityDeduplicationSummaryPipe
-from .kg.description import KGEntityDescriptionPipe
-from .kg.extraction import KGExtractionPipe
-from .kg.prompt_tuning import KGPromptTuningPipe
-from .kg.storage import KGStoragePipe
-from .retrieval.kg_search_pipe import KGSearchSearchPipe
+from .graph.clustering import GraphClusteringPipe
+from .graph.community_summary import GraphCommunitySummaryPipe
+from .graph.deduplication import GraphEntityDeduplicationPipe
+from .graph.deduplication_summary import GraphEntityDeduplicationSummaryPipe
+from .graph.description import GraphEntityDescriptionPipe
+from .graph.extraction import GraphExtractionPipe
+from .graph.prompt_tuning import GraphPromptTuningPipe
+from .graph.storage import GraphStoragePipe
+from .retrieval.graph_search_pipe import GraphSearchPipe
 from .retrieval.multi_search import MultiSearchPipe
 from .retrieval.query_transform_pipe import QueryTransformPipe
 from .retrieval.routing_search_pipe import RoutingSearchPipe
@@ -23,21 +23,21 @@ __all__ = [
     "SearchPipe",
     "GeneratorPipe",
     "EmbeddingPipe",
-    "KGExtractionPipe",
-    "KGSearchSearchPipe",
-    "KGEntityDescriptionPipe",
+    "GraphExtractionPipe",
+    "GraphSearchPipe",
+    "GraphEntityDescriptionPipe",
     "ParsingPipe",
     "QueryTransformPipe",
     "SearchRAGPipe",
     "StreamingSearchRAGPipe",
     "VectorSearchPipe",
     "VectorStoragePipe",
-    "KGStoragePipe",
-    "KGClusteringPipe",
+    "GraphStoragePipe",
+    "GraphClusteringPipe",
     "MultiSearchPipe",
-    "KGCommunitySummaryPipe",
+    "GraphCommunitySummaryPipe",
     "RoutingSearchPipe",
-    "KGEntityDeduplicationPipe",
-    "KGEntityDeduplicationSummaryPipe",
-    "KGPromptTuningPipe",
+    "GraphEntityDeduplicationPipe",
+    "GraphEntityDeduplicationSummaryPipe",
+    "GraphPromptTuningPipe",
 ]

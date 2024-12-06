@@ -11,7 +11,7 @@ from core import GenerationConfig
 from core.base import OrchestrationProvider, R2RException
 from core.base.abstractions import KGEnrichmentStatus, KGExtractionStatus
 
-from ...services import KgService
+from ...services import GraphService
 
 logger = logging.getLogger()
 from typing import TYPE_CHECKING
@@ -20,8 +20,8 @@ if TYPE_CHECKING:
     from hatchet_sdk import Hatchet
 
 
-def hatchet_kg_factory(
-    orchestration_provider: OrchestrationProvider, service: KgService
+def hatchet_graph_factory(
+    orchestration_provider: OrchestrationProvider, service: GraphService
 ) -> dict[str, "Hatchet.Workflow"]:
 
     def convert_to_dict(input_data):
@@ -122,145 +122,6 @@ def hatchet_kg_factory(
                 input_data[key] = GenerationConfig(**input_data[key])
         return input_data
 
-    @orchestration_provider.workflow(name="kg-extract", timeout="360m")
-    class KGExtractDescribeEmbedWorkflow:
-        def __init__(self, kg_service: KgService):
-            self.kg_service = kg_service
-
-        @orchestration_provider.concurrency(  # type: ignore
-            max_runs=orchestration_provider.config.kg_creation_concurrency_limit,  # type: ignore
-            limit_strategy=ConcurrencyLimitStrategy.GROUP_ROUND_ROBIN,
-        )
-        def concurrency(self, context: Context) -> str:
-            # TODO: Possible bug in hatchet, the job can't find context.workflow_input() when rerun
-            try:
-                return str(context.workflow_input()["request"]["graph_id"])
-            except Exception as e:
-                return str(uuid.uuid4())
-
-        @orchestration_provider.step(retries=1, timeout="360m")
-        async def kg_extract(self, context: Context) -> dict:
-            logger.info("Initiating kg workflow, step: kg_extract")
-
-            start_time = time.time()
-
-            input_data = get_input_data_dict(
-                context.workflow_input()["request"]
-            )
-
-            # context.log(f"Running KG Extraction for collection ID: {input_data['graph_id']}")
-            document_id = input_data.get("document_id", None)
-            collection_id = input_data.get("collection_id", None)
-            if collection_id and document_id:
-                raise R2RException(
-                    "Both collection_id and document_id were provided. Please provide only one.",
-                    400,
-                )
-            elif collection_id:
-                document_ids = (
-                    await self.kg_service.get_document_ids_for_create_graph(
-                        collection_id=collection_id,
-                        **input_data["graph_creation_settings"],
-                    )
-                )
-                workflows = []
-
-                for document_id in document_ids:
-                    input_data_copy = input_data.copy()
-                    input_data_copy["document_id"] = document_id
-                    input_data_copy.pop("collection_id", None)
-
-                    workflows.append(
-                        context.aio.spawn_workflow(
-                            "kg-extract",
-                            {
-                                "request": {
-                                    **input_data_copy,
-                                }
-                            },
-                            key=str(document_id),
-                        )
-                    )
-                # Wait for all workflows to complete
-                results = await asyncio.gather(*workflows)
-                return {
-                    "result": f"successfully submitted extraction request {document_id} in {time.time() - start_time:.2f} seconds",
-                }
-
-            # await self.kg_service.kg_relationships_extraction(
-            #     document_id=document_id,
-            #     **input_data["graph_creation_settings"],
-            # )
-            else:
-                extractions = []
-                async for extraction in service.kg_extraction(
-                    document_id=document_id,
-                    **input_data["graph_creation_settings"],
-                ):
-                    print(
-                        "found extraction w/ entities = = ",
-                        len(extraction.entities),
-                    )
-                    extractions.append(extraction)
-                await service.store_kg_extractions(extractions)
-
-                logger.info(
-                    f"Successfully ran kg relationships extraction for document {document_id}"
-                )
-
-            return {
-                "result": f"successfully ran kg relationships extraction for document {document_id} in {time.time() - start_time:.2f} seconds",
-            }
-
-        @orchestration_provider.step(
-            retries=1, timeout="360m", parents=["kg_extract"]
-        )
-        async def kg_entity_description(self, context: Context) -> dict:
-
-            input_data = get_input_data_dict(
-                context.workflow_input()["request"]
-            )
-            document_id = input_data.get("document_id", None)
-
-            await self.kg_service.kg_entity_description(
-                document_id=document_id,
-                **input_data["graph_creation_settings"],
-            )
-
-            logger.info(
-                f"Successfully ran kg node description for document {document_id}"
-            )
-
-            return {
-                "result": f"successfully ran kg node description for document {document_id}"
-            }
-
-        @orchestration_provider.failure()
-        async def on_failure(self, context: Context) -> None:
-            request = context.workflow_input().get("request", {})
-            document_id = request.get("document_id")
-
-            if not document_id:
-                logger.info(
-                    "No document id was found in workflow input to mark a failure."
-                )
-                return
-
-            try:
-                await self.kg_service.providers.database.set_workflow_status(
-                    id=uuid.UUID(document_id),
-                    status_type="extraction_status",
-                    status=KGExtractionStatus.FAILED,
-                )
-                context.log(
-                    f"Updated KG extraction status for {document_id} to FAILED"
-                )
-
-            except Exception as e:
-                context.log(
-                    f"Failed to update document status for {document_id}: {e}"
-                )
-
     @orchestration_provider.workflow(name="extract-triples", timeout="600m")
     class CreateGraphWorkflow:
 
@@ -277,7 +138,7 @@ def hatchet_kg_factory(
             except Exception as e:
                 pass
 
-        def __init__(self, kg_service: KgService):
+        def __init__(self, kg_service: GraphService):
             self.kg_service = kg_service
 
         @orchestration_provider.step(retries=1)
@@ -395,7 +256,7 @@ def hatchet_kg_factory(
                 )
 
     # class CreateGraphWorkflow:
-    #     def __init__(self, kg_service: KgService):
+    #     def __init__(self, kg_service: GraphService):
     #         self.kg_service = kg_service
 
     #     @orchestration_provider.step(retries=1)
@@ -512,7 +373,7 @@ def hatchet_kg_factory(
         name="entity-deduplication", timeout="360m"
     )
     class EntityDeduplicationWorkflow:
-        def __init__(self, kg_service: KgService):
+        def __init__(self, kg_service: GraphService):
             self.kg_service = kg_service
 
         @orchestration_provider.step(retries=0, timeout="360m")
@@ -576,41 +437,9 @@ def hatchet_kg_factory(
                 "result": f"successfully queued kg entity deduplication for collection {graph_id} with {number_of_distinct_entities} distinct entities"
             }
 
-    @orchestration_provider.workflow(
-        name="kg-entity-deduplication-summary", timeout="360m"
-    )
-    class EntityDeduplicationSummaryWorkflow:
-        def __init__(self, kg_service: KgService):
-            self.kg_service = kg_service
-
-        @orchestration_provider.step(retries=0, timeout="360m")
-        async def kg_entity_deduplication_summary(
-            self, context: Context
-        ) -> dict:
-
-            logger.info(
-                f"Running KG Entity Deduplication Summary for input data: {context.workflow_input()['request']}"
-            )
-
-            input_data = get_input_data_dict(
-                context.workflow_input()["request"]
-            )
-            graph_id = input_data["graph_id"]
-
-            await self.kg_service.kg_entity_deduplication_summary(
-                graph_id=graph_id,
-                offset=input_data["offset"],
-                limit=input_data["limit"],
-                **input_data["graph_entity_deduplication_settings"],
-            )
-
-            return {
-                "result": f"successfully queued kg entity deduplication summary for collection {graph_id}"
-            }
-
     @orchestration_provider.workflow(name="build-communities", timeout="360m")
-    class EnrichGraphWorkflow:
-        def __init__(self, kg_service: KgService):
+    class BuildGraphCommunitiesWorkflow:
+        def __init__(self, kg_service: GraphService):
             self.kg_service = kg_service
 
         @orchestration_provider.step(retries=1, parents=[], timeout="360m")
@@ -760,141 +589,9 @@ def hatchet_kg_factory(
                     status=KGEnrichmentStatus.FAILED,
                 )
 
-        # @orchestration_provider.step(retries=1, parents=["kg_clustering"])
-        # async def kg_community_summary(self, context: Context) -> dict:
-
-        #     input_data = get_input_data_dict(
-        #         context.workflow_input()["request"]
-        #     )
-        #     graph_id = input_data.get("graph_id", None)
-        #     collection_id = input_data.get("collection_id", None)
-        #     num_communities = context.step_output("kg_clustering")[
-        #         "kg_clustering"
-        #     ][0]["num_communities"]
-        #     parallel_communities = min(100, num_communities)
-        #     total_workflows = math.ceil(num_communities / parallel_communities)
-        #     workflows = []
-
-        #     logger.info(
-        #         f"Running KG Community Summary for {num_communities} communities, spawning {total_workflows} workflows"
-        #     )
-
-        #     for i in range(total_workflows):
-        #         offset = i * parallel_communities
-        #         workflows.append(
-        #             (
-        #                 await context.aio.spawn_workflow(
-        #                     "kg-community-summary",
-        #                     {
-        #                         "request": {
-        #                             "offset": offset,
-        #                             "limit": min(
-        #                                 parallel_communities,
-        #                                 num_communities - offset,
-        #                             ),
-        #                             "graph_id": (
-        #                                 str(graph_id) if graph_id else None
-        #                             ),
-        #                             "collection_id": (
-        #                                 str(collection_id)
-        #                                 if collection_id
-        #                                 else None
-        #                             ),
-        #                             **input_data["graph_enrichment_settings"],
-        #                         }
-        #                     },
-        #                     key=f"{i}/{total_workflows}_community_summary",
-        #                 )
-        #             ).result()
-        #         )
-
-        #     results = await asyncio.gather(*workflows)
-
-        #     logger.info(f"Ran {len(results)} workflows for community summary")
-
-        #     # set status to success
-        #     # for all documents in the collection, set kg_creation_status to ENRICHED
-        #     document_ids = await self.kg_service.providers.database.get_document_ids_by_status(
-        #         status_type="extraction_status",
-        #         status=KGExtractionStatus.SUCCESS,
-        #         collection_id=collection_id,
-        #     )
-
-        #     await self.kg_service.providers.database.set_workflow_status(
-        #         id=document_ids,
-        #         status_type="extraction_status",
-        #         status=KGExtractionStatus.ENRICHED,
-        #     )
-
-        #     await self.kg_service.providers.database.set_workflow_status(
-        #         id=graph_id,
-        #         status_type="graph_cluster_status",
-        #         status=KGEnrichmentStatus.SUCCESS,
-        #     )
-
-        #     return {
-        #         "result": f"Successfully completed enrichment for collection {graph_id} in {len(results)} workflows."
-        #     }
-
-        # @orchestration_provider.failure()
-        # async def on_failure(self, context: Context) -> None:
-        #     collection_id = context.workflow_input()["request"].get(
-        #         "collection_id", None
-        #     )
-        #     await self.kg_service.providers.database.set_workflow_status(
-        #         id=uuid.UUID(collection_id),
-        #         status_type="graph_cluster_status",
-        #         status=KGEnrichmentStatus.FAILED,
-        #     )
-
-    @orchestration_provider.workflow(
-        name="kg-community-summary", timeout="360m"
-    )
-    class KGCommunitySummaryWorkflow:
-        def __init__(self, kg_service: KgService):
-            self.kg_service = kg_service
-
-        @orchestration_provider.concurrency(  # type: ignore
-            max_runs=orchestration_provider.config.kg_concurrency_limit,  # type: ignore
-            limit_strategy=ConcurrencyLimitStrategy.GROUP_ROUND_ROBIN,
-        )
-        def concurrency(self, context: Context) -> str:
-            # TODO: Possible bug in hatchet, the job can't find context.workflow_input() when rerun
-            try:
-                return str(
-                    context.workflow_input()["request"]["collection_id"]
-                )
-            except Exception as e:
-                return str(uuid.uuid4())
-
-        @orchestration_provider.step(retries=1, timeout="360m")
-        async def kg_community_summary(self, context: Context) -> dict:
-
-            start_time = time.time()
-
-            logger.info
-
-            input_data = get_input_data_dict(
-                context.workflow_input()["request"]
-            )
-
-            community_summary = await self.kg_service.kg_community_summary(
-                **input_data,
-            )
-            logger.info(
-                f"Successfully ran kg community summary for communities {input_data['offset']} to {input_data['offset'] + len(community_summary)} in {time.time() - start_time:.2f} seconds "
-            )
-            return {
-                "result": f"successfully ran kg community summary for communities {input_data['offset']} to {input_data['offset'] + len(community_summary)}"
-            }
 
     return {
-        "kg-extract": KGExtractDescribeEmbedWorkflow(service),
         "extract-triples": CreateGraphWorkflow(service),
-        "build-communities": EnrichGraphWorkflow(service),
-        "kg-community-summary": KGCommunitySummaryWorkflow(service),
+        "build-communities": BuildGraphCommunitiesWorkflow(service),
         "kg-entity-deduplication": EntityDeduplicationWorkflow(service),
-        "kg-entity-deduplication-summary": EntityDeduplicationSummaryWorkflow(
-            service
-        ),
     }

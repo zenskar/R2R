@@ -4,7 +4,7 @@ import uuid
 import pytest
 
 from core.base import AsyncPipe, Community, Entity, KGExtraction, Relationship
-from core.pipes.kg.community_summary import KGCommunitySummaryPipe
+from core.pipes.kg.community_summary import GraphCommunitySummaryPipe
 from shared.abstractions.vector import VectorQuantizationType
 
 
@@ -21,7 +21,7 @@ def kg_community_summary_pipe(
     kg_pipeline_config,
     local_logging_provider,
 ):
-    return KGCommunitySummaryPipe(
+    return GraphCommunitySummaryPipe(
         postgres_db_provider,
         litellm_completion_provider,
         litellm_provider,
@@ -31,7 +31,7 @@ def kg_community_summary_pipe(
 
 
 @pytest.fixture(scope="function")
-def max_summary_input_length():
+def max_description_input_length():
     return 65536
 
 
@@ -150,10 +150,10 @@ async def test_community_summary_prompt(
     kg_community_summary_pipe,
     entities_list,
     relationships_raw_list,
-    max_summary_input_length,
+    max_description_input_length,
 ):
     summary = await kg_community_summary_pipe.community_summary_prompt(
-        entities_list, relationships_raw_list, max_summary_input_length
+        entities_list, relationships_raw_list, max_description_input_length
     )
     expected_summary = """
             Entity: Entity1

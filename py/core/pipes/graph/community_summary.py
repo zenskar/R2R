@@ -21,7 +21,7 @@ from core.providers.logger.r2r_logger import SqlitePersistentLoggingProvider
 logger = logging.getLogger()
 
 
-class KGCommunitySummaryPipe(AsyncPipe):
+class GraphCommunitySummaryPipe(AsyncPipe):
     """
     Clusters entities and relationships into communities within the knowledge graph using hierarchical Leiden algorithm.
     """
@@ -52,7 +52,7 @@ class KGCommunitySummaryPipe(AsyncPipe):
         self,
         entities: list[Entity],
         relationships: list[Relationship],
-        max_summary_input_length: int,
+        max_description_input_length: int,
     ):
 
         entity_map: dict[str, dict[str, list[Any]]] = {}
@@ -122,12 +122,12 @@ class KGCommunitySummaryPipe(AsyncPipe):
                 {relationships}
             """
 
-            if len(prompt) > max_summary_input_length:
+            if len(prompt) > max_description_input_length:
                 logger.info(
-                    f"Community summary prompt was created of length {len(prompt)}, trimming to {max_summary_input_length} characters."
+                    f"Community summary prompt was created of length {len(prompt)}, trimming to {max_description_input_length} characters."
                 )
                 # open a file and write the prompt to it
-                prompt = prompt[:max_summary_input_length]
+                prompt = prompt[:max_description_input_length]
                 break
 
         return prompt
@@ -135,7 +135,7 @@ class KGCommunitySummaryPipe(AsyncPipe):
     async def process_community(
         self,
         community_id: UUID,
-        max_summary_input_length: int,
+        max_description_input_length: int,
         generation_config: GenerationConfig,
         collection_id: UUID | None,
         nodes: list[str],
@@ -164,13 +164,13 @@ class KGCommunitySummaryPipe(AsyncPipe):
                 (
                     await self.llm_provider.aget_completion(
                         messages=await self.database_provider.prompt_handler.get_message_payload(
-                            task_prompt_name=self.database_provider.config.graph_enrichment_settings.graphrag_communities,
+                            task_prompt=self.database_provider.config.graph_enrichment_settings.graphrag_communities_prompt,
                             task_inputs={
                                 "input_text": (
                                     await self.community_summary_prompt(
                                         entities,
                                         relationships,
-                                        max_summary_input_length,
+                                        max_description_input_length,
                                     )
                                 ),
                             },
@@ -202,7 +202,7 @@ class KGCommunitySummaryPipe(AsyncPipe):
             except Exception as e:
                 if attempt == 2:
                     logger.error(
-                        f"KGCommunitySummaryPipe: Error generating community summary for community {community_id}: {e}"
+                        f"GraphCommunitySummaryPipe: Error generating community summary for community {community_id}: {e}"
                     )
                     return {
                         "community_id": community_id,
@@ -249,14 +249,14 @@ class KGCommunitySummaryPipe(AsyncPipe):
         offset = input.message["offset"]
         limit = input.message["limit"]
         generation_config = input.message["generation_config"]
-        max_summary_input_length = input.message["max_summary_input_length"]
+        max_description_input_length = input.message["max_description_input_length"]
         collection_id = input.message.get("collection_id", None)
         community_summary_jobs = []
         logger = input.message.get("logger", logging.getLogger())
 
         # check which community summaries exist and don't run them again
         logger.info(
-            f"KGCommunitySummaryPipe: Checking if community summaries exist for communities {offset} to {offset + limit}"
+            f"GraphCommunitySummaryPipe: Checking if community summaries exist for communities {offset} to {offset + limit}"
         )
 
         all_entities, _ = (
@@ -304,7 +304,7 @@ class KGCommunitySummaryPipe(AsyncPipe):
                     nodes=nodes,
                     all_entities=all_entities,
                     all_relationships=all_relationships,
-                    max_summary_input_length=max_summary_input_length,
+                    max_description_input_length=max_description_input_length,
                     generation_config=generation_config,
                     collection_id=collection_id,
                 )
@@ -319,12 +319,12 @@ class KGCommunitySummaryPipe(AsyncPipe):
             completed_community_summary_jobs += 1
             if completed_community_summary_jobs % 50 == 0:
                 logger.info(
-                    f"KGCommunitySummaryPipe: {completed_community_summary_jobs}/{total_jobs} community summaries completed, elapsed time: {time.time() - start_time:.2f} seconds"
+                    f"GraphCommunitySummaryPipe: {completed_community_summary_jobs}/{total_jobs} community summaries completed, elapsed time: {time.time() - start_time:.2f} seconds"
                 )
 
             if "error" in summary:
                 logger.error(
-                    f"KGCommunitySummaryPipe: Error generating community summary for community {summary['community_id']}: {summary['error']}"
+                    f"GraphCommunitySummaryPipe: Error generating community summary for community {summary['community_id']}: {summary['error']}"
                 )
                 total_errors += 1
                 continue
@@ -333,5 +333,5 @@ class KGCommunitySummaryPipe(AsyncPipe):
 
         if total_errors > 0:
             raise ValueError(
-                f"KGCommunitySummaryPipe: Failed to generate community summaries for {total_errors} out of {total_jobs} communities. Please rerun the job if there are too many failures."
+                f"GraphCommunitySummaryPipe: Failed to generate community summaries for {total_errors} out of {total_jobs} communities. Please rerun the job if there are too many failures."
             )

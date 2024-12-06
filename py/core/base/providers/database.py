@@ -5,6 +5,8 @@ from io import BytesIO
 from typing import Any, BinaryIO, Optional, Sequence, Tuple
 from uuid import UUID
 
+from shared.abstractions.graph import GraphCreationSettings, GraphEnrichmentSettings, GraphEntityDeduplicationSettings
+from shared.abstractions.graph import GraphEnrichmentSettings
 from pydantic import BaseModel
 
 from core.base.abstractions import (
@@ -16,9 +18,6 @@ from core.base.abstractions import (
     IndexArgsIVFFlat,
     IndexMeasure,
     IndexMethod,
-    KGCreationSettings,
-    KGEnrichmentSettings,
-    KGEntityDeduplicationSettings,
     Message,
     Relationship,
     SearchSettings,
@@ -43,9 +42,6 @@ from ..abstractions import (
     Community,
     Entity,
     GraphSearchSettings,
-    KGCreationSettings,
-    KGEnrichmentSettings,
-    KGEntityDeduplicationSettings,
     KGExtraction,
     Relationship,
 )
@@ -108,15 +104,14 @@ class DatabaseConfig(ProviderConfig):
     ] = None
     default_collection_name: str = "Default"
     default_collection_description: str = "Your default collection."
-    enable_fts: bool = False
 
     # KG settings
     batch_size: Optional[int] = 1
     kg_store_path: Optional[str] = None
-    graph_enrichment_settings: KGEnrichmentSettings = KGEnrichmentSettings()
-    graph_creation_settings: KGCreationSettings = KGCreationSettings()
-    graph_entity_deduplication_settings: KGEntityDeduplicationSettings = (
-        KGEntityDeduplicationSettings()
+    graph_enrichment_settings: GraphEnrichmentSettings = GraphEnrichmentSettings()
+    graph_creation_settings: GraphCreationSettings = GraphCreationSettings()
+    graph_entity_deduplication_settings: GraphEntityDeduplicationSettings = (
+        GraphEntityDeduplicationSettings()
     )
     graph_search_settings: GraphSearchSettings = GraphSearchSettings()
 
@@ -728,11 +723,11 @@ class PromptHandler(Handler):
     @abstractmethod
     async def get_message_payload(
         self,
-        system_prompt_name: Optional[str] = None,
+        system_prompt: Optional[str] = None,
         system_role: str = "system",
         system_inputs: dict = {},
         system_prompt_override: Optional[str] = None,
-        task_prompt_name: Optional[str] = None,
+        task_prompt: Optional[str] = None,
         task_role: str = "user",
         task_inputs: dict = {},
         task_prompt_override: Optional[str] = None,

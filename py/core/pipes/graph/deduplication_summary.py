@@ -19,7 +19,7 @@ from core.providers.logger.r2r_logger import SqlitePersistentLoggingProvider
 logger = logging.getLogger()
 
 
-class KGEntityDeduplicationSummaryPipe(AsyncPipe[Any]):
+class GraphEntityDeduplicationSummaryPipe(AsyncPipe[Any]):
 
     class Input(AsyncPipe.Input):
         message: dict
@@ -65,7 +65,7 @@ class KGEntityDeduplicationSummaryPipe(AsyncPipe[Any]):
 
         completion = await self.llm_provider.aget_completion(
             messages=await self.database_provider.prompt_handler.get_message_payload(
-                task_prompt_name=self.database_provider.config.graph_entity_deduplication_settings.graph_entity_deduplication_prompt,
+                task_prompt=self.database_provider.config.graph_entity_deduplication_settings.graph_entity_deduplication_prompt,
                 task_inputs={
                     "entity_name": entity_name,
                     "entity_descriptions": "\n".join(

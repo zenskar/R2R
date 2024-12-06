@@ -13,15 +13,8 @@ from .document import (
 )
 from .embedding import EmbeddingPurpose, default_embedding_prefixes
 from .exception import R2RDocumentProcessingError, R2RException
-from .graph import Community, Entity, KGExtraction, Relationship
-from .kg import (
-    GraphBuildSettings,
-    GraphCommunitySettings,
-    GraphEntitySettings,
-    GraphRelationshipSettings,
-    KGCreationSettings,
-    KGEnrichmentSettings,
-    KGEntityDeduplicationSettings,
+from .graph import Community, Entity, GraphBuildSettings, GraphCommunitySettings, GraphCreationSettings, GraphEnrichmentSettings, GraphEntityDeduplicationSettings, GraphEntitySettings, GraphRelationshipSettings, KGExtraction, Relationship
+from .graph import (
     KGRunType,
 )
 from .llm import (
@@ -114,8 +107,8 @@ __all__ = [
     "HybridSearchSettings",
     "SearchMode",
     # KG abstractions
-    "KGCreationSettings",
-    "KGEnrichmentSettings",
+    "GraphCreationSettings",
+    "GraphEnrichmentSettings",
     "KGExtraction",
     "KGRunType",
     "GraphEntitySettings",

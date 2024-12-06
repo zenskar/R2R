@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import Body, Depends, Path, Query
 
-from core.base import KGCreationSettings, KGRunType, R2RException, RunType
+from core.base import R2RException, RunType
 from core.base.api.models import (
     GenericBooleanResponse,
     WrappedBooleanResponse,
@@ -23,6 +23,7 @@ from core.utils import (
     generate_default_user_collection_id,
     update_settings_from_dict,
 )
+from shared.abstractions.graph import GraphCreationSettings, KGRunType
 
 from .base_router import BaseRouterV3
 
@@ -1055,7 +1056,7 @@ class CollectionsRouter(BaseRouterV3):
                 default=KGRunType.RUN,
                 description="Whether to return an estimate of the creation cost or to actually extract the document.",
             ),
-            settings: Optional[KGCreationSettings] = Body(
+            settings: Optional[GraphCreationSettings] = Body(
                 default=None,
                 description="Settings for the entities and relationships extraction process.",
             ),
@@ -1120,7 +1121,7 @@ class CollectionsRouter(BaseRouterV3):
                 from core.main.orchestration import simple_kg_factory
 
                 logger.info("Running extract-triples without orchestration.")
-                simple_kg = simple_kg_factory(self.services["kg"])
+                simple_kg = simple_kg_factory(self.services["graph"])
                 await simple_kg["extract-triples"](workflow_input)  # type: ignore
                 return {  # type: ignore
                     "message": "Graph created successfully.",

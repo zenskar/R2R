@@ -245,8 +245,8 @@ class IngestionService(Service):
                 document += chunk["data"]
 
             messages = await self.providers.database.prompt_handler.get_message_payload(
-                system_prompt_name=self.config.ingestion.document_summary_system_prompt,
-                task_prompt_name=self.config.ingestion.document_summary_task_prompt,
+                system_prompt=self.config.ingestion.document_summary_system_prompt,
+                task_prompt=self.config.ingestion.document_summary_task_prompt,
                 task_inputs={"document": document},
             )
             # FIXME: Why are we hardcoding the model here?
@@ -547,7 +547,7 @@ class IngestionService(Service):
                 (
                     await self.providers.llm.aget_completion(
                         messages=await self.providers.database.prompt_handler.get_message_payload(
-                            task_prompt_name="chunk_enrichment",
+                            task_prompt="chunk_enrichment",
                             task_inputs={
                                 "context_chunks": "\n".join(
                                     text for text, _ in context_chunk_texts

@@ -14,7 +14,7 @@ from core.providers.logger.r2r_logger import SqlitePersistentLoggingProvider
 logger = logging.getLogger()
 
 
-class KGClusteringPipe(AsyncPipe):
+class GraphClusteringPipe(AsyncPipe):
     """
     Clusters entities and relationships into communities within the knowledge graph using hierarchical Leiden algorithm.
     """

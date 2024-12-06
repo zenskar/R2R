@@ -321,10 +321,10 @@ class IngestionConfig(R2RSerializable):
 
     audio_transcription_model: str = "openai/whisper-1"
 
-    vision_img_prompt_name: str = "vision_img"
+    vision_img_prompt: str = "vision_img"
     vision_img_model: str = "openai/gpt-4o"
 
-    vision_pdf_prompt_name: str = "vision_pdf"
+    vision_pdf_prompt: str = "vision_pdf"
     vision_pdf_model: str = "openai/gpt-4o"
 
     skip_document_summary: bool = False
@@ -352,9 +352,9 @@ class IngestionConfig(R2RSerializable):
                 chunk_enrichment_settings=ChunkEnrichmentSettings(),  # default
                 extra_parsers={},
                 audio_transcription_model="openai/whisper-1",
-                vision_img_prompt_name="vision_img",
+                vision_img_prompt="vision_img",
                 vision_img_model="openai/gpt-4o",
-                vision_pdf_prompt_name="vision_pdf",
+                vision_pdf_prompt="vision_pdf",
                 vision_pdf_model="openai/gpt-4o",
                 skip_document_summary=False,
                 document_summary_system_prompt="default_system",
@@ -370,9 +370,9 @@ class IngestionConfig(R2RSerializable):
                 chunk_enrichment_settings=ChunkEnrichmentSettings(),  # default
                 extra_parsers={},
                 audio_transcription_model="openai/whisper-1",
-                vision_img_prompt_name="vision_img",
+                vision_img_prompt="vision_img",
                 vision_img_model="openai/gpt-4o",
-                vision_pdf_prompt_name="vision_pdf",
+                vision_pdf_prompt="vision_pdf",
                 vision_pdf_model="openai/gpt-4o",
                 skip_document_summary=True,  # skip summaries
                 document_summary_system_prompt="default_system",

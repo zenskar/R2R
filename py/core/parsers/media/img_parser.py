@@ -52,7 +52,7 @@ class ImageParser(AsyncParser[str | bytes]):
         """
         if not self.vision_prompt_text:
             self.vision_prompt_text = await self.database_provider.get_cached_prompt(  # type: ignore
-                prompt_name=self.config.vision_img_prompt_name
+                prompt_name=self.config.vision_img_prompt
             )
         try:
             # Verify model supports vision

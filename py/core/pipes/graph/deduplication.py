@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from core.base import AsyncState
-from core.base.abstractions import Entity, KGEntityDeduplicationType
+from core.base.abstractions import Entity
 from core.base.pipes import AsyncPipe
 from core.providers import (
     LiteLLMCompletionProvider,
@@ -15,11 +15,12 @@ from core.providers import (
     PostgresDBProvider,
 )
 from core.providers.logger.r2r_logger import SqlitePersistentLoggingProvider
+from shared.abstractions.graph import GraphEntityDeduplicationType
 
 logger = logging.getLogger()
 
 
-class KGEntityDeduplicationPipe(AsyncPipe):
+class GraphEntityDeduplicationPipe(AsyncPipe):
     def __init__(
         self,
         config: AsyncPipe.PipeConfig,
@@ -72,7 +73,7 @@ class KGEntityDeduplicationPipe(AsyncPipe):
         entities = await self._get_entities(graph_id, collection_id)
 
         logger.info(
-            f"KGEntityDeduplicationPipe: Got {len(entities)} entities for {graph_id or collection_id}"
+            f"GraphEntityDeduplicationPipe: Got {len(entities)} entities for {graph_id or collection_id}"
         )
 
         # deduplicate entities by name
@@ -132,7 +133,7 @@ class KGEntityDeduplicationPipe(AsyncPipe):
         ]
 
         logger.info(
-            f"KGEntityDeduplicationPipe: Upserting {len(deduplicated_entities_list)} deduplicated entities for collection {graph_id}"
+            f"GraphEntityDeduplicationPipe: Upserting {len(deduplicated_entities_list)} deduplicated entities for collection {graph_id}"
         )
 
         await self.database_provider.graph_handler.add_entities(
@@ -174,7 +175,7 @@ class KGEntityDeduplicationPipe(AsyncPipe):
         embeddings = [entity.description_embedding for entity in entities]
 
         logger.info(
-            f"KGEntityDeduplicationPipe: Running DBSCAN clustering on {len(embeddings)} embeddings"
+            f"GraphEntityDeduplicationPipe: Running DBSCAN clustering on {len(embeddings)} embeddings"
         )
         # TODO: make eps a config, make it very strict for now
         clustering = DBSCAN(eps=0.1, min_samples=2, metric="cosine").fit(
@@ -186,7 +187,7 @@ class KGEntityDeduplicationPipe(AsyncPipe):
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         n_noise = list(labels).count(-1)
         logger.info(
-            f"KGEntityDeduplicationPipe: Found {n_clusters} clusters and {n_noise} noise points"
+            f"GraphEntityDeduplicationPipe: Found {n_clusters} clusters and {n_noise} noise points"
         )
 
         # for all labels in the same cluster, we can deduplicate them by name
@@ -239,7 +240,7 @@ class KGEntityDeduplicationPipe(AsyncPipe):
             )
 
         logger.info(
-            f"KGEntityDeduplicationPipe: Upserting {len(deduplicated_entities_list)} deduplicated entities for collection {graph_id}"
+            f"GraphEntityDeduplicationPipe: Upserting {len(deduplicated_entities_list)} deduplicated entities for collection {graph_id}"
         )
         await self.database_provider.graph_handler.add_entities(
             deduplicated_entities_list,
@@ -284,7 +285,7 @@ class KGEntityDeduplicationPipe(AsyncPipe):
 
         if (
             graph_entity_deduplication_type
-            == KGEntityDeduplicationType.BY_NAME
+            == GraphEntityDeduplicationType.BY_NAME
         ):
             async for result in self.kg_named_entity_deduplication(
                 graph_id=graph_id, collection_id=collection_id, **kwargs
@@ -293,7 +294,7 @@ class KGEntityDeduplicationPipe(AsyncPipe):
 
         elif (
             graph_entity_deduplication_type
-            == KGEntityDeduplicationType.BY_DESCRIPTION
+            == GraphEntityDeduplicationType.BY_DESCRIPTION
         ):
             async for result in self.kg_description_entity_deduplication(
                 graph_id=graph_id, collection_id=collection_id, **kwargs
@@ -301,7 +302,7 @@ class KGEntityDeduplicationPipe(AsyncPipe):
                 yield result
 
         elif (
-            graph_entity_deduplication_type == KGEntityDeduplicationType.BY_LLM
+            graph_entity_deduplication_type == GraphEntityDeduplicationType.BY_LLM
         ):
             raise NotImplementedError(
                 "LLM entity deduplication is not implemented yet"

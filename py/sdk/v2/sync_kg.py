@@ -1,10 +1,9 @@
 from typing import Optional, Union
 from uuid import UUID
 
-from ..models import (
-    KGCreationSettings,
-    KGEnrichmentSettings,
-    KGEntityDeduplicationSettings,
+from shared.abstractions.graph import GraphCreationSettings, GraphEnrichmentSettings, GraphEntityDeduplicationSettings
+
+from shared.abstractions.graph import (
     KGRunType,
 )
 
@@ -14,7 +13,7 @@ class SyncKGMixins:
         self,
         collection_id: Optional[Union[UUID, str]] = None,
         run_type: Optional[Union[str, KGRunType]] = None,
-        kg_creation_settings: Optional[Union[dict, KGCreationSettings]] = None,
+        kg_creation_settings: Optional[Union[dict, GraphCreationSettings]] = None,
         run_with_orchestration: Optional[bool] = None,
     ) -> dict:
         """
@@ -23,9 +22,9 @@ class SyncKGMixins:
         Args:
             collection_id (Optional[Union[UUID, str]]): The ID of the collection to create the graph for.
             run_type (Optional[Union[str, KGRunType]]): The type of run to perform.
-            kg_creation_settings (Optional[Union[dict, KGCreationSettings]]): Settings for the graph creation process.
+            kg_creation_settings (Optional[Union[dict, GraphCreationSettings]]): Settings for the graph creation process.
         """
-        if isinstance(kg_creation_settings, KGCreationSettings):
+        if isinstance(kg_creation_settings, GraphCreationSettings):
             kg_creation_settings = kg_creation_settings.model_dump()
 
         data = {
@@ -42,7 +41,7 @@ class SyncKGMixins:
         collection_id: Optional[Union[UUID, str]] = None,
         run_type: Optional[Union[str, KGRunType]] = None,
         kg_enrichment_settings: Optional[
-            Union[dict, KGEnrichmentSettings]
+            Union[dict, GraphEnrichmentSettings]
         ] = None,
         run_with_orchestration: Optional[bool] = None,
     ) -> dict:
@@ -52,11 +51,11 @@ class SyncKGMixins:
         Args:
             collection_id (Optional[Union[UUID, str]]): The ID of the collection to enrich the graph for.
             run_type (Optional[Union[str, KGRunType]]): The type of run to perform.
-            kg_enrichment_settings (Optional[Union[dict, KGEnrichmentSettings]]): Settings for the graph enrichment process.
+            kg_enrichment_settings (Optional[Union[dict, GraphEnrichmentSettings]]): Settings for the graph enrichment process.
         Returns:
             Results of the graph enrichment process.
         """
-        if isinstance(kg_enrichment_settings, KGEnrichmentSettings):
+        if isinstance(kg_enrichment_settings, GraphEnrichmentSettings):
             kg_enrichment_settings = kg_enrichment_settings.model_dump()
 
         data = {
@@ -213,7 +212,7 @@ class SyncKGMixins:
         collection_id: Optional[Union[UUID, str]] = None,
         run_type: Optional[Union[str, KGRunType]] = None,
         deduplication_settings: Optional[
-            Union[dict, KGEntityDeduplicationSettings]
+            Union[dict, GraphEntityDeduplicationSettings]
         ] = None,
     ):
         """
@@ -221,9 +220,9 @@ class SyncKGMixins:
         Args:
             collection_id (Optional[Union[UUID, str]]): The ID of the collection to deduplicate entities for.
             run_type (Optional[Union[str, KGRunType]]): The type of run to perform.
-            deduplication_settings (Optional[Union[dict, KGEntityDeduplicationSettings]]): Settings for the deduplication process.
+            deduplication_settings (Optional[Union[dict, GraphEntityDeduplicationSettings]]): Settings for the deduplication process.
         """
-        if isinstance(deduplication_settings, KGEntityDeduplicationSettings):
+        if isinstance(deduplication_settings, GraphEntityDeduplicationSettings):
             deduplication_settings = deduplication_settings.model_dump()
 
         data = {

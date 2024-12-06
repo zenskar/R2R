@@ -600,11 +600,11 @@ class PostgresPromptHandler(CacheablePromptHandler):
 
     async def get_message_payload(
         self,
-        system_prompt_name: Optional[str] = None,
+        system_prompt: Optional[str] = None,
         system_role: str = "system",
         system_inputs: dict = {},
         system_prompt_override: Optional[str] = None,
-        task_prompt_name: Optional[str] = None,
+        task_prompt: Optional[str] = None,
         task_role: str = "user",
         task_inputs: dict = {},
         task_prompt_override: Optional[str] = None,
@@ -614,13 +614,13 @@ class PostgresPromptHandler(CacheablePromptHandler):
             system_prompt = system_prompt_override
         else:
             system_prompt = await self.get_cached_prompt(
-                system_prompt_name or "default_system",
+                system_prompt or "default_system",
                 system_inputs,
                 prompt_override=system_prompt_override,
             )
 
         task_prompt = await self.get_cached_prompt(
-            task_prompt_name or "default_rag",
+            task_prompt or "default_rag",
             task_inputs,
             prompt_override=task_prompt_override,
         )

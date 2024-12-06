@@ -375,7 +375,7 @@ class R2RPipeFactory:
         self,
         parsing_pipe_override: Optional[AsyncPipe] = None,
         embedding_pipe_override: Optional[AsyncPipe] = None,
-        kg_relationships_extraction_pipe_override: Optional[AsyncPipe] = None,
+        graph_relationships_extraction_pipe_override: Optional[AsyncPipe] = None,
         kg_storage_pipe_override: Optional[AsyncPipe] = None,
         kg_search_pipe_override: Optional[AsyncPipe] = None,
         vector_storage_pipe_override: Optional[AsyncPipe] = None,
@@ -400,8 +400,8 @@ class R2RPipeFactory:
             ),
             embedding_pipe=embedding_pipe_override
             or self.create_embedding_pipe(*args, **kwargs),
-            kg_relationships_extraction_pipe=kg_relationships_extraction_pipe_override
-            or self.create_kg_relationships_extraction_pipe(*args, **kwargs),
+            graph_relationships_extraction_pipe=graph_relationships_extraction_pipe_override
+            or self.create_graph_relationships_extraction_pipe(*args, **kwargs),
             kg_storage_pipe=kg_storage_pipe_override
             or self.create_kg_storage_pipe(*args, **kwargs),
             vector_storage_pipe=vector_storage_pipe_override
@@ -546,31 +546,31 @@ class R2RPipeFactory:
             config=AsyncPipe.PipeConfig(name="routing_search_pipe"),
         )
 
-    def create_kg_relationships_extraction_pipe(self, *args, **kwargs) -> Any:
-        from core.pipes import KGExtractionPipe
+    def create_graph_relationships_extraction_pipe(self, *args, **kwargs) -> Any:
+        from core.pipes import GraphExtractionPipe
 
-        return KGExtractionPipe(
+        return GraphExtractionPipe(
             logging_provider=self.providers.logging,
             llm_provider=self.providers.llm,
             database_provider=self.providers.database,
             config=AsyncPipe.PipeConfig(
-                name="kg_relationships_extraction_pipe"
+                name="graph_relationships_extraction_pipe"
             ),
         )
 
     def create_kg_storage_pipe(self, *args, **kwargs) -> Any:
-        from core.pipes import KGStoragePipe
+        from core.pipes import GraphStoragePipe
 
-        return KGStoragePipe(
+        return GraphStoragePipe(
             logging_provider=self.providers.logging,
             database_provider=self.providers.database,
             config=AsyncPipe.PipeConfig(name="kg_storage_pipe"),
         )
 
     def create_kg_search_pipe(self, *args, **kwargs) -> Any:
-        from core.pipes import KGSearchSearchPipe
+        from core.pipes import GraphSearchPipe
 
-        return KGSearchSearchPipe(
+        return GraphSearchPipe(
             logging_provider=self.providers.logging,
             database_provider=self.providers.database,
             llm_provider=self.providers.llm,
@@ -605,9 +605,9 @@ class R2RPipeFactory:
             )
 
     def create_kg_entity_description_pipe(self, *args, **kwargs) -> Any:
-        from core.pipes import KGEntityDescriptionPipe
+        from core.pipes import GraphEntityDescriptionPipe
 
-        return KGEntityDescriptionPipe(
+        return GraphEntityDescriptionPipe(
             logging_provider=self.providers.logging,
             database_provider=self.providers.database,
             llm_provider=self.providers.llm,
@@ -616,9 +616,9 @@ class R2RPipeFactory:
         )
 
     def create_kg_clustering_pipe(self, *args, **kwargs) -> Any:
-        from core.pipes import KGClusteringPipe
+        from core.pipes import GraphClusteringPipe
 
-        return KGClusteringPipe(
+        return GraphClusteringPipe(
             logging_provider=self.providers.logging,
             database_provider=self.providers.database,
             llm_provider=self.providers.llm,
@@ -627,9 +627,9 @@ class R2RPipeFactory:
         )
 
     def create_kg_deduplication_summary_pipe(self, *args, **kwargs) -> Any:
-        from core.pipes import KGEntityDeduplicationSummaryPipe
+        from core.pipes import GraphEntityDeduplicationSummaryPipe
 
-        return KGEntityDeduplicationSummaryPipe(
+        return GraphEntityDeduplicationSummaryPipe(
             logging_provider=self.providers.logging,
             database_provider=self.providers.database,
             llm_provider=self.providers.llm,
@@ -638,9 +638,9 @@ class R2RPipeFactory:
         )
 
     def create_kg_community_summary_pipe(self, *args, **kwargs) -> Any:
-        from core.pipes import KGCommunitySummaryPipe
+        from core.pipes import GraphCommunitySummaryPipe
 
-        return KGCommunitySummaryPipe(
+        return GraphCommunitySummaryPipe(
             logging_provider=self.providers.logging,
             database_provider=self.providers.database,
             llm_provider=self.providers.llm,
@@ -649,9 +649,9 @@ class R2RPipeFactory:
         )
 
     def create_kg_entity_deduplication_pipe(self, *args, **kwargs) -> Any:
-        from core.pipes import KGEntityDeduplicationPipe
+        from core.pipes import GraphEntityDeduplicationPipe
 
-        return KGEntityDeduplicationPipe(
+        return GraphEntityDeduplicationPipe(
             logging_provider=self.providers.logging,
             database_provider=self.providers.database,
             llm_provider=self.providers.llm,
@@ -662,9 +662,9 @@ class R2RPipeFactory:
     def create_kg_entity_deduplication_summary_pipe(
         self, *args, **kwargs
     ) -> Any:
-        from core.pipes import KGEntityDeduplicationSummaryPipe
+        from core.pipes import GraphEntityDeduplicationSummaryPipe
 
-        return KGEntityDeduplicationSummaryPipe(
+        return GraphEntityDeduplicationSummaryPipe(
             logging_provider=self.providers.logging,
             database_provider=self.providers.database,
             llm_provider=self.providers.llm,
@@ -675,9 +675,9 @@ class R2RPipeFactory:
         )
 
     def create_kg_prompt_tuning_pipe(self, *args, **kwargs) -> Any:
-        from core.pipes import KGPromptTuningPipe
+        from core.pipes import GraphPromptTuningPipe
 
-        return KGPromptTuningPipe(
+        return GraphPromptTuningPipe(
             logging_provider=self.providers.logging,
             database_provider=self.providers.database,
             llm_provider=self.providers.llm,

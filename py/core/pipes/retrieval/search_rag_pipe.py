@@ -62,8 +62,8 @@ class SearchRAGPipe(GeneratorPipe):
             search_iteration += 1
         messages = (
             await self.database_provider.prompt_handler.get_message_payload(
-                system_prompt_name=self.config.system_prompt,
-                task_prompt_name=self.config.task_prompt,
+                system_prompt=self.config.system_prompt,
+                task_prompt=self.config.task_prompt,
                 task_inputs={"query": sel_query, "context": context},
                 task_prompt_override=kwargs.get("task_prompt_override", None),
             )

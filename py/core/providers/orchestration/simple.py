@@ -36,7 +36,7 @@ class SimpleOrchestrationProvider(OrchestrationProvider):
             self.ingestion_workflows = simple_ingestion_factory(service)
 
         elif workflow == Workflow.KG:
-            from core.main.orchestration.simple.kg_workflow import (
+            from core.main.orchestration.simple.graph_workflow import (
                 simple_kg_factory,
             )
 

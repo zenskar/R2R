@@ -20,7 +20,7 @@ from core.providers.logger.r2r_logger import SqlitePersistentLoggingProvider
 logger = logging.getLogger()
 
 
-class KGPromptTuningPipe(AsyncPipe):
+class GraphPromptTuningPipe(AsyncPipe):
     """
     A pipe to tune a prompt for a specific domain.
     """
@@ -67,7 +67,7 @@ class KGPromptTuningPipe(AsyncPipe):
 
             tuned_prompt = await self.llm_provider.aget_completion(
                 messages=await self.database_provider.prompt_handler.get_message_payload(
-                    task_prompt_name="prompt_tuning_task",
+                    task_prompt="prompt_tuning_task",
                     task_inputs={
                         "prompt_template": current_prompt["template"],
                         "input_types": str(current_prompt["input_types"]),
