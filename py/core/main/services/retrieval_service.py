@@ -20,6 +20,7 @@ from core.base import (
     manage_run,
     to_async_generator,
 )
+from core.base.utils import count_tokens
 from core.base.api.models import CombinedSearchResponse, RAGResponse, User
 from core.base.logger.base import RunType
 from core.providers.logger.r2r_logger import SqlitePersistentLoggingProvider
@@ -85,7 +86,7 @@ class RetrievalService(Service):
                     status_code=400,
                     message="Hybrid search settings must be specified in the input configuration.",
                 )
-            # TODO - Remove these transforms once we have a better way to handle this
+            # Transform filters as needed
             for filter, value in search_settings.filters.items():
                 if isinstance(value, UUID):
                     search_settings.filters[filter] = str(value)
@@ -158,7 +159,7 @@ class RetrievalService(Service):
     ) -> RAGResponse:
         async with manage_run(self.run_manager, RunType.RETRIEVAL) as run_id:
             try:
-                # TODO - Remove these transforms once we have a better way to handle this
+                # Transform filters as needed
                 for (
                     filter,
                     value,
@@ -267,53 +268,35 @@ class RetrievalService(Service):
                         message="Either message or messages should be provided",
                     )
 
-                # Ensure 'message' is a Message instance
+                # Convert message dicts to Message if needed
                 if message and not isinstance(message, Message):
                     if isinstance(message, dict):
                         message = Message.from_dict(message)
                     else:
                         raise R2RException(
                             status_code=400,
-                            message="""
-                                Invalid message format. The expected format contains:
-                                    role: MessageType | 'system' | 'user' | 'assistant' | 'function'
-                                    content: Optional[str]
-                                    name: Optional[str]
-                                    function_call: Optional[dict[str, Any]]
-                                    tool_calls: Optional[list[dict[str, Any]]]
-                                    """,
+                            message="Invalid message format.",
                         )
 
-                # Ensure 'messages' is a list of Message instances
                 if messages:
                     processed_messages = []
-                    for message in messages:
-                        if isinstance(message, Message):
-                            processed_messages.append(message)
-                        elif hasattr(message, "dict"):
-                            processed_messages.append(
-                                Message.from_dict(message.dict())
-                            )
-                        elif isinstance(message, dict):
-                            processed_messages.append(
-                                Message.from_dict(message)
-                            )
+                    for m in messages:
+                        if isinstance(m, Message):
+                            processed_messages.append(m)
+                        elif isinstance(m, dict):
+                            processed_messages.append(Message.from_dict(m))
                         else:
-                            processed_messages.append(
-                                Message.from_dict(str(message))
+                            raise R2RException(
+                                status_code=400,
+                                message="Invalid message format in messages list.",
                             )
                     messages = processed_messages
                 else:
                     messages = []
 
-                # Transform UUID filters to strings
-                for filter_key, value in search_settings.filters.items():
-                    if isinstance(value, UUID):
-                        search_settings.filters[filter_key] = str(value)
-
+                # Fetch or create conversation
                 ids = []
-
-                if conversation_id:  # Fetch the existing conversation
+                if conversation_id:
                     try:
                         conversation = (
                             await self.logging_connection.get_conversation(
@@ -323,21 +306,22 @@ class RetrievalService(Service):
                         )
                     except Exception as e:
                         logger.error(f"Error fetching conversation: {str(e)}")
+                        conversation = None
 
                     if conversation is not None:
                         messages_from_conversation: list[Message] = []
-                        for message_response in conversation:
-                            if isinstance(message_response, MessageResponse):
+                        for msg_resp in conversation:
+                            if isinstance(msg_resp, MessageResponse):
                                 messages_from_conversation.append(
-                                    message_response.message
+                                    msg_resp.message
                                 )
-                                ids.append(message_response.id)
+                                ids.append(msg_resp.id)
                             else:
                                 logger.warning(
-                                    f"Unexpected type in conversation found: {type(message_response)}\n{message_response}"
+                                    f"Unexpected type in conversation: {type(msg_resp)}"
                                 )
                         messages = messages_from_conversation + messages
-                else:  # Create new conversation
+                else:
                     conversation_response = (
                         await self.logging_connection.create_conversation()
                     )
@@ -354,21 +338,37 @@ class RetrievalService(Service):
 
                 current_message = messages[-1]
 
-                # Save the new message to the conversation
+                # Count tokens for user message and store in DB
+                user_tokens = count_tokens(
+                    model=rag_generation_config.model,
+                    messages=[
+                        {
+                            "role": current_message.role,
+                            "content": current_message.content,
+                        }
+                    ],
+                )
+
                 parent_id = ids[-1] if ids else None
-                message_response = await self.logging_connection.add_message(
+                user_msg_response = await self.logging_connection.add_message(
                     conversation_id=conversation_id,
                     content=current_message,
                     parent_id=parent_id,
+                    metadata={
+                        "usage": {
+                            "prompt_tokens": user_tokens,
+                            "completion_tokens": 0,
+                            "total_tokens": user_tokens,
+                        }
+                    },
                 )
-
                 message_id = (
-                    message_response.id
-                    if message_response is not None
-                    else None
+                    user_msg_response.id if user_msg_response else None
                 )
 
                 if rag_generation_config.stream:
+                    collected_content = []
+                    tool_tokens = 0
 
                     async def stream_response():
                         async with manage_run(self.run_manager, "rag_agent"):
@@ -378,6 +378,9 @@ class RetrievalService(Service):
                                 config=self.config.agent,
                                 search_pipeline=self.pipelines.search_pipeline,
                             )
+
+                            current_tool_call = None
+
                             async for chunk in agent.arun(
                                 messages=messages,
                                 system_instruction=task_prompt_override,
@@ -385,40 +388,95 @@ class RetrievalService(Service):
                                 rag_generation_config=rag_generation_config,
                                 include_title_if_available=include_title_if_available,
                             ):
+                                # Track tool call tokens
+                                if "<tool_call>" in chunk:
+                                    current_tool_call = ""
+                                if current_tool_call is not None:
+                                    current_tool_call += chunk
+                                    if "</tool_call>" in chunk:
+                                        nonlocal tool_tokens
+                                        tool_tokens += count_tokens(
+                                            model=rag_generation_config.model,
+                                            messages=[
+                                                {
+                                                    "role": "assistant",
+                                                    "content": current_tool_call,
+                                                }
+                                            ],
+                                        )
+                                        current_tool_call = None
+
+                                collected_content.append(chunk)
                                 yield chunk
+
+                            # Once streaming completes, calculate final usage
+                            assistant_content = "".join(collected_content)
+                            completion_tokens = count_tokens(
+                                model=rag_generation_config.model,
+                                messages=[
+                                    {
+                                        "role": "assistant",
+                                        "content": assistant_content,
+                                    }
+                                ],
+                            )
+
+                            total_completion_tokens = (
+                                completion_tokens + tool_tokens
+                            )
+                            usage_metadata = {
+                                "usage": {
+                                    "prompt_tokens": user_tokens,
+                                    "completion_tokens": total_completion_tokens,
+                                    "total_tokens": user_tokens
+                                    + total_completion_tokens,
+                                    "tool_tokens": tool_tokens,
+                                }
+                            }
+
+                            await self.logging_connection.add_message(
+                                conversation_id=conversation_id,
+                                content=Message(
+                                    role="assistant", content=assistant_content
+                                ),
+                                parent_id=message_id,
+                                metadata=usage_metadata,
+                            )
 
                     return stream_response()
 
-                results = await self.agents.rag_agent.arun(
-                    messages=messages,
-                    system_instruction=task_prompt_override,
-                    search_settings=search_settings,
-                    rag_generation_config=rag_generation_config,
-                    include_title_if_available=include_title_if_available,
-                )
-
-                # Save the assistant's reply to the conversation
-                if isinstance(results[-1], dict):
-                    assistant_message = Message(**results[-1])
-                elif isinstance(results[-1], Message):
-                    assistant_message = results[-1]
                 else:
-                    assistant_message = Message(
-                        role="assistant", content=str(results[-1])
+                    # Non-streaming case
+                    results = await self.agents.rag_agent.arun(
+                        messages=messages,
+                        system_instruction=task_prompt_override,
+                        search_settings=search_settings,
+                        rag_generation_config=rag_generation_config,
+                        include_title_if_available=include_title_if_available,
                     )
 
-                await self.logging_connection.add_message(
-                    conversation_id=conversation_id,
-                    content=assistant_message,
-                    parent_id=message_id,
-                )
+                    assistant_messages = results.get("messages", [])
+                    token_usage = results.get("token_usage", {})
 
-                return {
-                    "messages": results,
-                    "conversation_id": str(
-                        conversation_id
-                    ),  # Ensure it's a string
-                }
+                    if (
+                        assistant_messages
+                        and assistant_messages[-1]["role"] == "assistant"
+                    ):
+                        assistant_msg_dict = assistant_messages[-1]
+                        await self.logging_connection.add_message(
+                            conversation_id=conversation_id,
+                            content=Message(
+                                role="assistant",
+                                content=assistant_msg_dict["content"],
+                            ),
+                            parent_id=message_id,
+                            metadata={"usage": token_usage},
+                        )
+
+                    return {
+                        "messages": assistant_messages,
+                        "conversation_id": str(conversation_id),
+                    }
 
             except Exception as e:
                 logger.error(f"Error in agent response: {str(e)}")

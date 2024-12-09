@@ -15,6 +15,7 @@ from .base_utils import (
     run_pipeline,
     to_async_generator,
     validate_uuid,
+    count_tokens,
 )
 from .splitter.text import RecursiveCharacterTextSplitter, TextSplitter
 
@@ -41,4 +42,5 @@ __all__ = [
     # Vector utils
     "_decorate_vector_type",
     "_get_str_estimation_output",
+    "count_tokens",
 ]

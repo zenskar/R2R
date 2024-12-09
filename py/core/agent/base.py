@@ -3,6 +3,7 @@ import logging
 from abc import ABCMeta
 from typing import AsyncGenerator, Generator, Optional
 
+from core.base.utils import count_tokens
 from core.base.abstractions import (
     AsyncSyncMeta,
     LLMChatCompletion,
@@ -52,40 +53,74 @@ class R2RAgent(Agent, metaclass=CombinedMeta):
         system_instruction: Optional[str] = None,
         *args,
         **kwargs,
-    ) -> list[dict]:
-        # TODO - Make this method return a list of messages.
+    ):
         self._reset()
         await self._setup(system_instruction)
 
+        # Add initial user (and possibly system) messages
         if messages:
             for message in messages:
                 await self.conversation.add_message(message)
 
+        token_usage = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
+
         while not self._completed:
             messages_list = await self.conversation.get_messages()
             generation_config = self.get_generation_config(messages_list[-1])
+            prompt_count = count_tokens(
+                model=generation_config.model, messages=messages_list
+            )
+
             response = await self.llm_provider.aget_completion(
                 messages_list,
                 generation_config,
             )
+
+            # After completion, count completion tokens
+            updated_messages_list = messages_list.copy()
+            updated_messages_list.append(
+                {
+                    "role": "assistant",
+                    "content": response.choices[0].message.content,
+                }
+            )
+            total_count_after_completion = count_tokens(
+                model=generation_config.model, messages=updated_messages_list
+            )
+
+            completion_tokens = total_count_after_completion - prompt_count
+            token_usage["prompt_tokens"] = prompt_count
+            token_usage["completion_tokens"] += completion_tokens
+            token_usage["total_tokens"] = (
+                token_usage["prompt_tokens"] + token_usage["completion_tokens"]
+            )
+
             await self.process_llm_response(response, *args, **kwargs)
 
-        # Get the output messages
         all_messages: list[dict] = await self.conversation.get_messages()
         all_messages.reverse()
 
+        # Extract only the assistant response of the last turn
         output_messages = []
-        for message_2 in all_messages:
+        user_message_content = messages[-1].content if messages else None
+        for msg in all_messages:
             if (
-                message_2.get("content")
-                and message_2.get("content") != messages[-1].content
+                msg.get("content")
+                and msg.get("content") != user_message_content
             ):
-                output_messages.append(message_2)
+                output_messages.append(msg)
             else:
                 break
         output_messages.reverse()
 
-        return output_messages
+        return {
+            "messages": output_messages,
+            "token_usage": token_usage,
+        }
 
     async def process_llm_response(
         self, response: LLMChatCompletion, *args, **kwargs
@@ -108,6 +143,7 @@ class R2RAgent(Agent, metaclass=CombinedMeta):
                         **kwargs,
                     )
             else:
+                # Add assistant message with no function calls
                 await self.conversation.add_message(
                     Message(role="assistant", content=message.content)
                 )
@@ -131,14 +167,18 @@ class R2RStreamingAgent(R2RAgent):
 
         while not self._completed:
             messages_list = await self.conversation.get_messages()
-
             generation_config = self.get_generation_config(
                 messages_list[-1], stream=True
             )
+            prompt_tokens = count_tokens(
+                model=generation_config.model, messages=messages_list
+            )
+
             stream = self.llm_provider.aget_completion_stream(
                 messages_list,
                 generation_config,
             )
+
             async for proc_chunk in self.process_llm_response(
                 stream, *args, **kwargs
             ):
@@ -163,6 +203,7 @@ class R2RStreamingAgent(R2RAgent):
 
         async for chunk in stream:
             delta = chunk.choices[0].delta
+
             if delta.tool_calls:
                 for tool_call in delta.tool_calls:
                     if not tool_call.function:
@@ -180,7 +221,6 @@ class R2RStreamingAgent(R2RAgent):
                     results = await self.handle_function_or_tool_call(
                         name,
                         arguments,
-                        # FIXME: tool_call.id,
                         *args,
                         **kwargs,
                     )
@@ -225,16 +265,10 @@ class R2RStreamingAgent(R2RAgent):
 
             elif chunk.choices[0].finish_reason == "stop":
                 if content_buffer:
-                    await self.conversation.add_message(
-                        Message(role="assistant", content=content_buffer)
-                    )
-                self._completed = True
-                yield "</completion>"
+                    yield "</completion>"
+                    self._completed = True
 
-        # Handle any remaining content after the stream ends
+        # If there's any remaining content after the stream ends
         if content_buffer and not self._completed:
-            await self.conversation.add_message(
-                Message(role="assistant", content=content_buffer)
-            )
-            self._completed = True
             yield "</completion>"
+            self._completed = True

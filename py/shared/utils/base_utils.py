@@ -5,6 +5,7 @@ from copy import deepcopy
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Iterable, Optional
 from uuid import NAMESPACE_DNS, UUID, uuid4, uuid5
+from litellm import token_counter
 
 from ..abstractions.search import (
     AggregateSearchResult,
@@ -262,6 +263,29 @@ def llm_cost_per_million_tokens(
             * input_output_ratio
             * cost_dict["gpt-4o"][1]
         ) / (1 + input_output_ratio)
+
+
+def count_tokens(
+    model: str,
+    messages: list,
+    custom_tokenizer: dict | None = None,
+    text: str | list[str] | None = None,
+    count_response_tokens: bool | None = False,
+    tools: list | None = None,
+    tool_choice: Any | None = None,
+) -> int:
+    """
+    Returns the number of tokens used by a model for a given list of messages.
+    """
+    return token_counter(
+        model=model,
+        messages=messages,
+        custom_tokenizer=custom_tokenizer,
+        text=text,
+        count_response_tokens=count_response_tokens,
+        tools=tools,
+        tool_choice=tool_choice,
+    )
 
 
 def validate_uuid(uuid_str: str) -> UUID:

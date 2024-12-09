@@ -1,6 +1,5 @@
 import asyncio
 import textwrap
-from copy import copy
 from typing import Any, Optional
 from uuid import UUID
 
@@ -658,6 +657,7 @@ class RetrievalRouterV3(BaseRouterV3):
             )
 
             try:
+                # Run the agent
                 response = await self.services["retrieval"].agent(
                     message=message,
                     messages=messages,
@@ -678,9 +678,7 @@ class RetrievalRouterV3(BaseRouterV3):
                             yield chunk
                             await asyncio.sleep(0)
 
-                    return StreamingResponse(
-                        stream_generator(), media_type="application/json"
-                    )  # type: ignore
+                    return StreamingResponse(stream_generator(), media_type="application/json")  # type: ignore
                 else:
                     return response
             except Exception as e:

@@ -24,31 +24,17 @@ class Conversation:
         self.messages: list[Message] = []
         self._lock = asyncio.Lock()
 
-    def create_and_add_message(
-        self,
-        role: MessageType | str,
-        content: Optional[str] = None,
-        name: Optional[str] = None,
-        function_call: Optional[dict[str, Any]] = None,
-        tool_calls: Optional[list[dict[str, Any]]] = None,
-    ):
-        message = Message(
-            role=role,
-            content=content,
-            name=name,
-            function_call=function_call,
-            tool_calls=tool_calls,
-        )
-        self.add_message(message)
-
-    async def add_message(self, message):
+    async def add_message(self, message: Message):
         async with self._lock:
             self.messages.append(message)
 
-    async def get_messages(self) -> list[dict[str, Any]]:
+    async def get_messages(self) -> list[dict]:
         async with self._lock:
             return [
-                {**msg.model_dump(exclude_none=True), "role": str(msg.role)}
+                {
+                    **msg.model_dump(exclude_none=True),
+                    "role": str(msg.role),
+                }
                 for msg in self.messages
             ]
 

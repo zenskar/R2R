@@ -17,6 +17,7 @@ from shared.utils import (
     run_pipeline,
     to_async_generator,
     validate_uuid,
+    count_tokens,
 )
 
 __all__ = [
@@ -38,4 +39,5 @@ __all__ = [
     "validate_uuid",
     "_decorate_vector_type",
     "_get_str_estimation_output",
+    "count_tokens",
 ]
