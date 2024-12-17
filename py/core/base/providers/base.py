@@ -8,6 +8,8 @@ from ..abstractions import R2RSerializable
 
 class AppConfig(R2RSerializable):
     project_name: Optional[str] = None
+    max_documents: Optional[int] = 100
+    max_chunks: Optional[int] = 100_000
 
     @classmethod
     def create(cls, *args, **kwargs):

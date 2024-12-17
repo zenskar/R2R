@@ -39,6 +39,7 @@ from core.base.api.models import (
 from core.utils import update_settings_from_dict
 
 from ...abstractions import R2RProviders, R2RServices
+from ...config import R2RConfig
 from .base_router import BaseRouterV3
 
 logger = logging.getLogger()
@@ -76,9 +77,11 @@ def merge_ingestion_config(
 class DocumentsRouter(BaseRouterV3):
     def __init__(
         self,
+        config: R2RConfig,
         providers: R2RProviders,
         services: R2RServices,
     ):
+        self.config = config
         super().__init__(providers, services)
         self._register_workflows()
 
@@ -313,6 +316,13 @@ class DocumentsRouter(BaseRouterV3):
             The ingestion process runs asynchronously and its progress can be tracked using the returned
             task_id.
             """
+            print("max documents allowed = ", self.config.app.max_documents)
+            overview = await self.services.management.documents_overview(
+                user_ids=[auth_user.id], offset=0, limit=1
+            )
+            print("overview = ", overview)
+            print("current documents = ", (overview["total_entries"]))
+
             effective_ingestion_config = self._prepare_ingestion_config(
                 ingestion_mode=ingestion_mode,
                 ingestion_config=ingestion_config,

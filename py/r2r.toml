@@ -75,7 +75,7 @@ batch_size = 256
     monthly_limit = 10000
 
   [database.route_limits]
-    # Set the `v3/retrieval/search` route to have a maximum of 5 requests per minute
+    # Set the `v3/retrieval/search` route to have a maximum of 120 requests per user per minute
     "/v3/retrieval/search" = { route_per_min = 120 }
     "/v3/retrieval/rag" = { route_per_min = 30 }
 

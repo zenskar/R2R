@@ -143,6 +143,7 @@ class R2RBuilder:
                 services=services,
             ).get_router(),
             "documents_router": DocumentsRouter(
+                config=self.config,
                 providers=providers,
                 services=services,
             ).get_router(),
